@@ -1,0 +1,32 @@
+from midi.events import *
+
+def Registry():
+	ER = EventRegistry()
+	ER.register_event(NoteOnEvent, [NoteEvent])
+	ER.register_event(NoteOffEvent, [NoteEvent])
+	ER.register_event(AfterTouchEvent, [Event])
+	ER.register_event(ControlChangeEvent, [Event])
+	ER.register_event(ProgramChangeEvent, [Event])
+	ER.register_event(ChannelAfterTouchEvent, [Event])
+	ER.register_event(PitchWheelEvent, [Event])
+	ER.register_event(SysexEvent, [Event])
+
+	ER.register_event(SequenceNumberMetaEvent, [MetaEvent])
+	ER.register_event(TextMetaEvent, [MetaEventWithText])
+	ER.register_event(CopyrightMetaEvent, [MetaEventWithText])
+	ER.register_event(TrackNameEvent, [MetaEventWithText])
+	ER.register_event(InstrumentNameEvent, [MetaEventWithText])
+	ER.register_event(LyricsEvent, [MetaEventWithText])
+	ER.register_event(MarkerEvent, [MetaEventWithText])
+	ER.register_event(CuePointEvent, [MetaEventWithText])
+	ER.register_event(ProgramNameEvent, [MetaEventWithText])
+	ER.register_event(ChannelPrefixEvent, [MetaEvent])
+	ER.register_event(PortEvent, [MetaEvent])
+	ER.register_event(TrackLoopEvent, [MetaEvent])
+	ER.register_event(EndOfTrackEvent, [MetaEvent])
+	ER.register_event(SetTempoEvent, [MetaEvent])
+	ER.register_event(SmpteOffsetEvent, [MetaEvent])
+	ER.register_event(TimeSignatureEvent, [MetaEvent])
+	ER.register_event(KeySignatureEvent, [MetaEvent])
+	ER.register_event(SequencerSpecificEvent, [MetaEvent])
+	return ER
