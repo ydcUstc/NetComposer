@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import tensorflow as tf
 import math
@@ -14,6 +15,7 @@ def build_or_load(allow_load=True):
     from model import build_models
     models = build_models()
     models[0].summary()
+    sys.stdout.flush()
     if allow_load:
         try:
             models[0].load_weights(MODEL_FILE)

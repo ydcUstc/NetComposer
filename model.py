@@ -13,11 +13,15 @@ from constants import *
 
 def primary_loss(y_true, y_pred):
     # 3 separate loss calculations based on if note is played or not
-    played = y_true[:, :, :, 0]
-    bce_note = losses.binary_crossentropy(y_true[:, :, :, 0], y_pred[:, :, :, 0])
-    bce_replay = losses.binary_crossentropy(y_true[:, :, :, 1], tf.multiply(played, y_pred[:, :, :, 1]) + tf.multiply(1 - played, y_true[:, :, :, 1]))
-    mse = losses.mean_squared_error(y_true[:, :, :, 2], tf.multiply(played, y_pred[:, :, :, 2]) + tf.multiply(1 - played, y_true[:, :, :, 2]))
-    return bce_note + bce_replay + mse
+    #played = y_true[:, :, :, 0]
+    bce_replay = losses.binary_crossentropy(y_true[:, :, :, 0], y_pred[:, :, :, 0])
+    bce_stop = losses.binary_crossentropy(y_true[:, :, :, 1], y_pred[:, :, :, 1])
+    #bce_replay = losses.binary_crossentropy(y_true[:, :, :, 1], tf.multiply(played, y_pred[:, :, :, 1]) + tf.multiply(1 - played, y_true[:, :, :, 1]))
+    #mse = losses.mean_squared_error(y_true[:, :, :, 1], tf.multiply(played, y_pred[:, :, :, 1]) + tf.multiply(1 - played, y_true[:, :, :, 1]))
+    mse = losses.mean_squared_error(y_true[:, :, :, 2], tf.multiply(y_true[:, :, :, 0],y_pred[:, :, :, 2]))
+
+    #return (1 + bce_stop) * (1 + bce_replay) * (1 + mse)
+    return tf.log(tf.exp(bce_stop) + tf.exp(bce_replay) + tf.exp(mse))
 
 def pitch_pos_in_f(time_steps):
     """
@@ -26,7 +30,8 @@ def pitch_pos_in_f(time_steps):
     def f(x):
         note_ranges = tf.range(NUM_NOTES, dtype='float32') / NUM_NOTES
         repeated_ranges = tf.tile(note_ranges, [tf.shape(x)[0] * time_steps])
-        return tf.reshape(repeated_ranges, [tf.shape(x)[0], time_steps, NUM_NOTES, 1])
+        a= tf.reshape(repeated_ranges, [tf.shape(x)[0], time_steps, NUM_NOTES, 1])
+        return a
     return f
 
 def pitch_class_in_f(time_steps):
@@ -49,11 +54,13 @@ def pitch_bins_f(time_steps):
     return f
 
 def time_axis(dropout):
-    def f(notes, beat, style):
+    def f(notes, style):
         time_steps = int(notes.get_shape()[1])
 
         # TODO: Experiment with when to apply conv
         note_octave = TimeDistributed(Conv1D(OCTAVE_UNITS, 2 * OCTAVE, padding='same'))(notes)
+        #for
+        #note_octave =
         note_octave = Activation('tanh')(note_octave)
         note_octave = Dropout(dropout)(note_octave)
 
@@ -62,8 +69,8 @@ def time_axis(dropout):
             Lambda(pitch_pos_in_f(time_steps))(notes),
             Lambda(pitch_class_in_f(time_steps))(notes),
             Lambda(pitch_bins_f(time_steps))(notes),
-            note_octave,
-            TimeDistributed(RepeatVector(NUM_NOTES))(beat)
+            note_octave
+            #TimeDistributed(RepeatVector(NUM_NOTES))(beat)
         ])
 
         x = note_features
@@ -136,14 +143,14 @@ def note_axis(dropout):
 
 def build_models(time_steps=SEQ_LEN, input_dropout=0.2, dropout=0.5):
     notes_in = Input((time_steps, NUM_NOTES, NOTE_UNITS))
-    beat_in = Input((time_steps, NOTES_PER_BAR))
+    #beat_in = Input((time_steps, NOTES_PER_BAR))
     style_in = Input((time_steps, NUM_STYLES))
     # Target input for conditioning
     chosen_in = Input((time_steps, NUM_NOTES, NOTE_UNITS))
 
     # Dropout inputs
     notes = Dropout(input_dropout)(notes_in)
-    beat = Dropout(input_dropout)(beat_in)
+    #beat = Dropout(input_dropout)(beat_in)
     chosen = Dropout(input_dropout)(chosen_in)
 
     # Distributed representations
@@ -151,17 +158,17 @@ def build_models(time_steps=SEQ_LEN, input_dropout=0.2, dropout=0.5):
     style = style_l(style_in)
 
     """ Time axis """
-    time_out = time_axis(dropout)(notes, beat, style)
+    time_out = time_axis(dropout)(notes, style)
 
     """ Note Axis & Prediction Layer """
     naxis = note_axis(dropout)
     notes_out = naxis(time_out, chosen, style)
 
-    model = Model([notes_in, chosen_in, beat_in, style_in], [notes_out])
+    model = Model([notes_in, chosen_in, style_in], [notes_out])
     model.compile(optimizer='nadam', loss=[primary_loss])
 
     """ Generation Models """
-    time_model = Model([notes_in, beat_in, style_in], [time_out])
+    time_model = Model([notes_in, style_in], [time_out])
 
     note_features = Input((1, NUM_NOTES, TIME_AXIS_UNITS), name='note_features')
     chosen_gen_in = Input((1, NUM_NOTES, NOTE_UNITS), name='chosen_gen_in')

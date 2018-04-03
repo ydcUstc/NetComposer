@@ -18,16 +18,17 @@ def main():
 
 def train(models):
     print('Loading data')
-    train_data, train_labels = load_all(styles, BATCH_SIZE, SEQ_LEN)
+    train_data, train_labels = load_part(styles, BATCH_SIZE, SEQ_LEN, load_probability=0.3)
+    test_data, test_labels =load_part(styles, BATCH_SIZE, SEQ_LEN, load_probability=0.3)
 
     cbs = [
         ModelCheckpoint(MODEL_FILE, monitor='loss', save_best_only=True, save_weights_only=True),
         EarlyStopping(monitor='loss', patience=5),
-        TensorBoard(log_dir='/ghome/yindc/DeepJ/output/logs', histogram_freq=1)
+        TensorBoard(log_dir=os.path.join(OUT_DIR,'logs'), histogram_freq=1)
     ]
 
     print('Training')
-    models[0].fit(train_data, train_labels, epochs=1000, callbacks=cbs, batch_size=BATCH_SIZE,validation_data=(train_data,train_labels))
+    models[0].fit(train_data, train_labels, epochs=1000, callbacks=cbs, batch_size=BATCH_SIZE,validation_data=(test_data, test_labels))
 
 if __name__ == '__main__':
     main()
